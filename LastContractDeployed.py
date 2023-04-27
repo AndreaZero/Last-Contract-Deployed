@@ -4,14 +4,14 @@ from eth_abi import decode_abi
 from web3.exceptions import ContractLogicError, BadFunctionCallOutput
 
 # Inserisci il tuo endpoint API Ethereum (Infura, QuickNode, Alchemy, ecc.)
-eth_api_url = "https://mainnet.infura.io/v3/a17e6c02211141faa560c6a9294d44ab"
+eth_api_url = "https://mainnet.infura.io/v3/IL-TUO-ID-PROJECT"
 w3 = Web3(Web3.HTTPProvider(eth_api_url))
 
 # URL per accedere al servizio di Etherscan per la decodifica del bytecode
 etherscan_api_url = "https://api.etherscan.io/api"
 
 # La tua chiave API di Etherscan
-etherscan_api_key = "KTT2DIKCZYZS14IYUIIZU6IGSFAD7AXQD8"
+etherscan_api_key = "LA-TUA-API-ETHERSCAN"
 
 # Numero di blocchi da analizzare (ad esempio, ultimi 1000 blocchi)
 num_blocks = 1000

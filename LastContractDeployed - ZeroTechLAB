@@ -4,17 +4,17 @@ from eth_abi import decode_abi
 from web3.exceptions import ContractLogicError, BadFunctionCallOutput
 
 # Inserisci il tuo endpoint API Ethereum (Infura, QuickNode, Alchemy, ecc.)
-eth_api_url = "https://mainnet.infura.io/v3/IL-TUO-ID-PROJECT"
+eth_api_url = "https://mainnet.infura.io/v3/LA-TUA-API-ENDPOINT"
 w3 = Web3(Web3.HTTPProvider(eth_api_url))
 
 # URL per accedere al servizio di Etherscan per la decodifica del bytecode
 etherscan_api_url = "https://api.etherscan.io/api"
 
 # La tua chiave API di Etherscan
-etherscan_api_key = "LA-TUA-API-ETHERSCAN"
+etherscan_api_key = "ETHERSCAN-API"
 
 # Numero di blocchi da analizzare (ad esempio, ultimi 1000 blocchi)
-num_blocks = 1000
+num_blocks = 100
 latest_block_number = w3.eth.blockNumber
 
 # Definisci l'interfaccia del contratto per il token ERC20
@@ -34,13 +34,18 @@ contract_interface = [
 
 # Crea un oggetto ContractFactory utilizzando l'interfaccia del contratto
 contract_factory = w3.eth.contract(abi=contract_interface)
+print("\n")
+print(f"Printing last {num_blocks} contracts deployed on ETHEREUM")
+print("\n")
+
 
 for i in range(latest_block_number - num_blocks, latest_block_number):
     block = w3.eth.getBlock(i, full_transactions=True)
     for tx in block.transactions:
         if tx['to'] is None:
             contract_address = w3.eth.getTransactionReceipt(tx['hash'])['contractAddress']
-            print(f"Contract deployed at block {i}: {contract_address}")
+            print(f"Contract deployed at block {i}:")
+            print(f"Address: {contract_address}")
             
             # Recupera il bytecode del contratto
             bytecode = w3.eth.getCode(contract_address).hex()
@@ -58,7 +63,7 @@ for i in range(latest_block_number - num_blocks, latest_block_number):
             # Controlla se la risposta è una stringa vuota
             if response:
                 contract_name = response['result'][0]['ContractName']
-                print(f"Contract Name: {contract_name}")
+                print(f"Name: {contract_name}")
 
                 try:
                     # Recupera la massima fornitura totale di token
@@ -82,3 +87,4 @@ for i in range(latest_block_number - num_blocks, latest_block_number):
             else:
                 print("Cannot decode bytecode")
                 print("\n")
+

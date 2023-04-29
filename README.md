@@ -1,7 +1,7 @@
 # Last-Contract-Deployed
-by ZeroTech LAB
+by ZeroTech LAB - https://twitter.com/andrea__zero
 
-Check the last deployed contracn on ETHEREUM
+Check the last deployed contract on ETHEREUM
 
 Prints:
 

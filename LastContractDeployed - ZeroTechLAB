@@ -1,77 +1,176 @@
+from tkinter import Tk, Label, Button, Text, Scrollbar, Entry
+from tkinter.scrolledtext import ScrolledText
+import threading
 from web3 import Web3
 import requests
+from tkinter import ttk
+import os
+from PIL import ImageTk, Image
 from eth_abi import decode_abi
 from web3.exceptions import ContractLogicError, BadFunctionCallOutput
+from ttkthemes import ThemedStyle
 
-eth_api_url = "https://mainnet.infura.io/v3/LA-TUA-API-ENDPOINT"
-w3 = Web3(Web3.HTTPProvider(eth_api_url))
+stop_flag = False
 
-etherscan_api_url = "https://api.etherscan.io/api"
+def run_script(num_blocks):
+    # Inserisci il tuo endpoint API Ethereum (Infura, QuickNode, Alchemy, ecc.)
+    eth_api_url = "https://mainnet.infura.io/v3/YOUR-INFURA-API"
+    w3 = Web3(Web3.HTTPProvider(eth_api_url))
 
-etherscan_api_key = "ETHERSCAN-API"
+    # URL per accedere al servizio di Etherscan per la decodifica del bytecode
+    etherscan_api_url = "https://api.etherscan.io/api"
 
-num_blocks = 100
-latest_block_number = w3.eth.blockNumber
+    # La tua chiave API di Etherscan
+    etherscan_api_key = "YOUR-ETHERSCAN-API"
 
-contract_interface = [
-    {
-        "constant": True,
-        "inputs": [],
-        "name": "totalSupply",
-        "outputs": [{"name": "", "type": "uint256"}],
-        "payable": False,
-        "stateMutability": "view",
-        "type": "function",
-    }
-]
+    latest_block_number = w3.eth.blockNumber
 
-contract_factory = w3.eth.contract(abi=contract_interface)
-print("\n")
-print(f"Printing last {num_blocks} contracts deployed on ETHEREUM")
-print("\n")
+    # Definisci l'interfaccia del contratto per il token ERC20
+    # Puoi trovare l'interfaccia in formato ABI nella documentazione del token ERC20
+    # https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
 
+    contract_interface = [
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "totalSupply",
+            "outputs": [{"name": "", "type": "uint256"}],
+            "payable": False,
+            "stateMutability": "view",
+            "type": "function",
+        }
+    ]
 
-for i in range(latest_block_number - num_blocks, latest_block_number):
-    block = w3.eth.getBlock(i, full_transactions=True)
-    for tx in block.transactions:
-        if tx['to'] is None:
-            contract_address = w3.eth.getTransactionReceipt(tx['hash'])['contractAddress']
-            print(f"Contract deployed at block {i}:")
-            print(f"Address: {contract_address}")
-            
-            bytecode = w3.eth.getCode(contract_address).hex()
-            
-            payload = {
-                "module": "contract",
-                "action": "getsourcecode",
-                "address": contract_address,
-                "apikey": etherscan_api_key,
-            }
-            response = requests.get(etherscan_api_url, params=payload).json()
+    # Crea un oggetto ContractFactory utilizzando l'interfaccia del contratto
+    contract_factory = w3.eth.contract(abi=contract_interface)
 
-            if response:
-                contract_name = response['result'][0]['ContractName']
-                print(f"Name: {contract_name}")
+    def append_output_text(text):
+        output_text.insert("end", text + "\n")
+        output_text.see("end")
 
-                try:
-                    contract_instance = contract_factory(address=contract_address)
-                    total_supply_wei = contract_instance.functions.totalSupply().call()
-                    if total_supply_wei > 0:
-                        total_supply_eth = total_supply_wei / 10**18
-                        total_supply_formatted = "{:,.0f}".format(total_supply_eth)
-                        print(f"Total Supply: {total_supply_formatted}")
+    # Sostituisci la funzione di stampa con append_output_text
+    print = append_output_text
+
+    print("\n")
+    print(f"Printing last contracts for last {num_blocks} blocks.")
+    print("\n")
+
+    for i in range(latest_block_number - num_blocks, latest_block_number):
+        block = w3.eth.getBlock(i, full_transactions=True)
+        if stop_flag:
+                break
+        for tx in block.transactions:
+            if tx['to'] is None:
+                contract_address = w3.eth.getTransactionReceipt(tx['hash'])['contractAddress']
+                print(f"Contract deployed at block {i}:")
+                print(f"Address: {contract_address}")
+
+                # Recupera il bytecode del contratto
+                bytecode = w3.eth.getCode(contract_address).hex()
+
+                # Decodifica il bytecode del contratto utilizzando il servizio di Etherscan
+                # Assicurati di aver ottenuto una chiave API valida da Etherscan
+                payload = {
+                    "module": "contract",
+                    "action": "getsourcecode",
+                    "address": contract_address,
+                    "apikey": etherscan_api_key,
+                }
+                response = requests.get(etherscan_api_url, params=payload).json()
+
+                # Controlla se la risposta è una stringa vuota
+                if response:
+                    contract_name = response['result'][0]['ContractName']
+                    print(f"Name: {contract_name}")
+
+                    try:
+                        # Recupera la massima fornitura totale di token
+                        contract_instance = contract_factory(address=contract_address)
+                        total_supply_wei = contract_instance.functions.totalSupply().call()
+                        if total_supply_wei > 0:
+                            total_supply_eth = total_supply_wei / 10**18
+                            total_supply_formatted = "{:,.0f}".format(total_supply_eth)
+                            print(f"Total Supply: {total_supply_formatted}")
+                            print("\n")
+                        else:
+                            print("Total Supply: N/A")
+                            print("\n")
+
+                    except ContractLogicError:
+                        print("Error retrieving total supply")
                         print("\n")
-                    else:
-                     print("Total Supply: N/A")
-                     print("\n")
-
-                except ContractLogicError:
-                    print("Error retrieving total supply")
+                    except BadFunctionCallOutput:
+                        print("Unable to decode output from totalSupply")
+                        print("\n")
+                else:
+                    print("Cannot decode bytecode")
                     print("\n")
-                except BadFunctionCallOutput:
-                    print("Unable to decode output from totalSupply")
-                    print("\n")
-            else:
-                print("Cannot decode bytecode")
-                print("\n")
 
+
+def stop_script():
+    global stop_flag
+    # Imposta il flag di stop su True
+    stop_flag = True
+
+# Creazione della finestra principale
+window = Tk()
+window.title("Last Tokens contracts")
+window_width = 1024
+window_height = 768
+window.configure(bg="black")
+window.iconbitmap("./favicon.ico")
+# Carica l'immagine
+background_image = Image.open("./bg.png")
+# Ridimensiona l'immagine se necessario
+background_image = background_image.resize((window_width, window_height), Image.ANTIALIAS)
+# Converte l'immagine in un oggetto PhotoImage
+background_image = ImageTk.PhotoImage(background_image)
+
+# Crea un'etichetta per l'immagine di sfondo
+background_label = ttk.Label(window, image=background_image)
+background_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+
+# Crea una variabile per il percorso del file .woff del font personalizzato
+custom_font_path = "./proto.woff"  # Sostituisci "nome_font" con il nome del tuo file .woff
+
+# Carica il font personalizzato
+custom_font = (custom_font_path, 12)
+
+# Creazione dello stile tematizzato per la finestra
+style = ThemedStyle(window)
+style.theme_use('default')
+
+# Etichetta per visualizzare l'output dello script
+output_label = Label(window, text="Output:", font=custom_font)
+output_label.pack()
+
+# Area di testo per visualizzare l'output dello script
+output_text = ScrolledText(window, height=20, bg="white", fg="black", font=custom_font)
+output_text.pack()
+
+# Pulsante per avviare lo script
+run_button = Button(window, text="Start script", command=lambda: run_script_thread(int(num_blocks_entry.get())), font=custom_font)
+run_button.pack()
+
+# Etichetta e campo di input per specificare il numero di ultimi blocchi da controllare
+num_blocks_label = Label(window, text="Insert the number of blocks you want to check:", fg="yellow", bg="black", font=custom_font)
+num_blocks_label.pack()
+num_blocks_entry = Entry(window, bg="black", fg="white", font=custom_font)
+num_blocks_entry.pack()
+
+# Pulsante per interrompere lo script
+stop_button = Button(window, text="Stop", command=stop_script, font=custom_font)
+stop_button.pack()
+# Imposta il pulsante "Stop" inizialmente invisibile
+stop_button.pack_forget()
+
+def run_script_thread(num_blocks):
+    # Mostra il pulsante "Stop" quando si avvia lo script
+    stop_button.pack()
+    
+    thread = threading.Thread(target=run_script, args=(num_blocks,))
+    thread.start()
+
+# Avvio del ciclo di eventi di Tkinter
+window.mainloop()

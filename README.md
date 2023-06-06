@@ -6,3 +6,5 @@ Check the last deployed contract on ETHEREUM
 Prints:
 
 Name, address, total supply
+
+
